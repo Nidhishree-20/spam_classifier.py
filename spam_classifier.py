@@ -1,46 +1,59 @@
-import pandas as pd
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import accuracy_score
-
 # Sample dataset
-data = {
-    "message": [
-        "Congratulations you won a free lottery",
-        "Call me when you reach home",
-        "Win money now click this link",
-        "Let's meet for lunch tomorrow",
-        "Free entry in a prize contest",
-        "Are you coming to class today"
-    ],
-    "label": ["spam", "ham", "spam", "ham", "spam", "ham"]
-}
+data = [
+    ("Congratulations you won a free lottery", "spam"),
+    ("Call me when you reach home", "ham"),
+    ("Win money now click this link", "spam"),
+    ("Let's meet for lunch tomorrow", "ham"),
+    ("Free entry in a prize contest", "spam"),
+    ("Are you coming to class today", "ham")
+]
 
-df = pd.DataFrame(data)
+# Step 1: Prepare data
+spam_words = {}
+ham_words = {}
+spam_count = 0
+ham_count = 0
 
-# Convert text to numbers
-vectorizer = CountVectorizer()
-X = vectorizer.fit_transform(df["message"])
+# Step 2: Count word frequency
+for message, label in data:
+    words = message.lower().split()
+    
+    if label == "spam":
+        spam_count += 1
+        for word in words:
+            spam_words[word] = spam_words.get(word, 0) + 1
+    else:
+        ham_count += 1
+        for word in words:
+            ham_words[word] = ham_words.get(word, 0) + 1
 
-y = df["label"]
+# Step 3: Total words
+total_spam_words = sum(spam_words.values())
+total_ham_words = sum(ham_words.values())
 
-# Split dataset
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+# Step 4: Vocabulary
+vocab = set(list(spam_words.keys()) + list(ham_words.keys()))
 
-# Train model
-model = MultinomialNB()
-model.fit(X_train, y_train)
+# Step 5: Prediction function
+def predict(message):
+    words = message.lower().split()
+    
+    spam_prob = spam_count / (spam_count + ham_count)
+    ham_prob = ham_count / (spam_count + ham_count)
+    
+    for word in words:
+        # Laplace smoothing
+        spam_word_prob = (spam_words.get(word, 0) + 1) / (total_spam_words + len(vocab))
+        ham_word_prob = (ham_words.get(word, 0) + 1) / (total_ham_words + len(vocab))
+        
+        spam_prob *= spam_word_prob
+        ham_prob *= ham_word_prob
+    
+    return "spam" if spam_prob > ham_prob else "ham"
 
-# Test accuracy
-predictions = model.predict(X_test)
-print("Model Accuracy:", accuracy_score(y_test, predictions))
+# Step 6: Test
+test_msg = "Congratulations you have won a prize"
+result = predict(test_msg)
 
-# Test with new message
-new_message = ["Congratulations you have won a prize"]
-new_vector = vectorizer.transform(new_message)
-
-prediction = model.predict(new_vector)
-
-print("Message:", new_message[0])
-print("Prediction:", prediction[0])
+print("Message:", test_msg)
+print("Prediction:", result)
